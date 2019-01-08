@@ -55,6 +55,10 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 //--------------------------------------------------------------
 void ofxOpenVR::exit()
 {
+
+       // vr::VRCompositor()->CompositorQuit();
+    
+    
 	if (vr::VRCompositor()->IsMirrorWindowVisible()) {
 		hideMirrorWindow();
 	}
@@ -64,7 +68,9 @@ void ofxOpenVR::exit()
 		vr::VR_Shutdown();
 		_pHMD = NULL;
 	}
-
+  
+        _pTrackedCamera->~IVRTrackedCamera();
+    
 	for (std::vector< CGLRenderModel * >::iterator i = _vecRenderModels.begin(); i != _vecRenderModels.end(); i++)
 	{
 		delete (*i);
@@ -364,7 +370,13 @@ bool ofxOpenVR::init()
 	{
 		_pHMD = NULL;
 		char buf[1024];
-		sprintf_s(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#ifdef TARGET_OSX
+        snprintf(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#else
+        sprintf_s(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#endif
+     
+		
 		return false;
 	}
 
@@ -376,7 +388,11 @@ bool ofxOpenVR::init()
 		vr::VR_Shutdown();
 
 		char buf[1024];
-		sprintf_s(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#ifdef TARGET_OSX
+        snprintf(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#else
+        sprintf_s(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+#endif
 		return false;
 	}
 	_strTrackingSystemName = "No Driver";
@@ -1278,7 +1294,14 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 {
 	CGLRenderModel *pRenderModel = NULL;
 	for (std::vector< CGLRenderModel * >::iterator i = _vecRenderModels.begin(); i != _vecRenderModels.end(); i++) {
-		if (!stricmp((*i)->GetName().c_str(), pchRenderModelName)) {
+#ifdef TARGET_OSX
+        if (!strcmp((*i)->GetName().c_str(), pchRenderModelName)) {
+
+#else
+            if (!stricmp((*i)->GetName().c_str(), pchRenderModelName)) {
+
+#endif
+        
 			pRenderModel = *i;
 			break;
 		}
@@ -1292,8 +1315,12 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			error = vr::VRRenderModels()->LoadRenderModel_Async(pchRenderModelName, &pModel);
 			if (error != vr::VRRenderModelError_Loading)
 				break;
-
-			Sleep(1);
+#ifdef TARGET_OSX
+         sleep(1);
+#else
+       Sleep(1);
+#endif
+			
 		}
 
 		if (error != vr::VRRenderModelError_None) {
@@ -1307,7 +1334,11 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			if (error != vr::VRRenderModelError_Loading)
 				break;
 
-			Sleep(1);
+#ifdef TARGET_OSX
+            sleep(1);
+#else
+            Sleep(1);
+#endif
 		}
 
 		if (error != vr::VRRenderModelError_None) {
