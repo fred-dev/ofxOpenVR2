@@ -385,7 +385,7 @@ bool ofxOpenVR::init()
 	{
 		_pHMD = NULL;
 		char buf[1024];
-		sprintf_s(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+		snprintf(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 		return false;
 	}
 
@@ -397,7 +397,7 @@ bool ofxOpenVR::init()
 		vr::VR_Shutdown();
 
 		char buf[1024];
-		sprintf_s(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+		snprintf(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 		return false;
 	}
 	_strTrackingSystemName = "No Driver";
@@ -1130,9 +1130,9 @@ void ofxOpenVR::renderScene(vr::Hmd_Eye nEye)
 	
 
 	// Don't continue if somebody else has input focus
-	/*if (_pHMD->IsInputFocusCapturedByAnotherProcess()) {
-		return;
-	}
+//	if (_pHMD->IsInputFocusCapturedByAnotherProcess()) {
+//		return;
+//	}
 
 	// Draw the controllers
 	if (_bDrawControllers) {
@@ -1277,7 +1277,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 {
 	CGLRenderModel *pRenderModel = NULL;
 	for (std::vector< CGLRenderModel * >::iterator i = _vecRenderModels.begin(); i != _vecRenderModels.end(); i++) {
-		if (!stricmp((*i)->GetName().c_str(), pchRenderModelName)) {
+		if (!strcmp((*i)->GetName().c_str(), pchRenderModelName)) {
 			pRenderModel = *i;
 			break;
 		}
@@ -1292,7 +1292,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			if (error != vr::VRRenderModelError_Loading)
 				break;
 
-			Sleep(1);
+			sleep(1);
 		}
 
 		if (error != vr::VRRenderModelError_None) {
@@ -1306,7 +1306,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			if (error != vr::VRRenderModelError_Loading)
 				break;
 
-			Sleep(1);
+			sleep(1);
 		}
 
 		if (error != vr::VRRenderModelError_None) {
