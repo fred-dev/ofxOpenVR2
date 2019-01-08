@@ -3,35 +3,35 @@
 #include "ofMain.h"
 #include "ofxOpenVR.h"
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp {
 
-	public:
-		void setup();
-		void exit();
+public:
+	void setup();
+	void exit();
 
-		void update();
-		void draw();
+	void update();
+	void draw();
 
-		void render(vr::Hmd_Eye nEye);
+	void render(vr::Hmd_Eye nEye);
 
-		void keyPressed(int key);
-		void keyReleased(int key);
-		void mouseMoved(int x, int y );
-		void mouseDragged(int x, int y, int button);
-		void mousePressed(int x, int y, int button);
-		void mouseReleased(int x, int y, int button);
-		void mouseEntered(int x, int y);
-		void mouseExited(int x, int y);
-		void windowResized(int w, int h);
-		void dragEvent(ofDragInfo dragInfo);
-		void gotMessage(ofMessage msg);
-		
-		ofxOpenVR openVR;
+	void keyPressed(int key);
+	void keyReleased(int key);
+	void mouseMoved(int x, int y);
+	void mouseDragged(int x, int y, int button);
+	void mousePressed(int x, int y, int button);
+	void mouseReleased(int x, int y, int button);
+	void mouseEntered(int x, int y);
+	void mouseExited(int x, int y);
+	void windowResized(int w, int h);
+	void dragEvent(ofDragInfo dragInfo);
+	void gotMessage(ofMessage msg);
 
-		bool bShowHelp;
-		std::ostringstream _strHelp;
+	ofxOpenVR openVR;
 
-		ofImage image;
-		ofShader shader;
-		ofSpherePrimitive sphere;
+	bool bShowHelp;
+	std::ostringstream _strHelp;
+
+	ofImage image;
+	ofShader shader;
+	ofSpherePrimitive sphere;
 };

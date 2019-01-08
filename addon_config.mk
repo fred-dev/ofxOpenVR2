@@ -68,7 +68,6 @@ vs:
 	
 OSX:
 
-	#ADDON_LIBS = libs\lib\osx64\OpenVR.framework
+	ADDON_LIBS =
+	ADDON_FRAMEWORKS  = libs\lib\osx64\OpenVR.framework
 	ADDON_LIBS_EXCLUDE  += libs\lib\win64\Release\OpenVR.lib
-
-

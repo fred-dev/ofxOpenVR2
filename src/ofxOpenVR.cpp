@@ -32,6 +32,7 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 	_bIsGLInit = false;
 	_pHMD = NULL;
 	_pRenderModels = NULL;
+	_pTrackedCamera = NULL;
 	_bGlFinishHack = true;
 	_unLensVAO = 0;
 	_iTrackedControllerCount = 0;
@@ -44,9 +45,9 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 	_bIsGridVisible = false;
 	_clearColor.set(.08f, .08f, .08f, 1.0f);
 	_bRenderModelForTrackedDevices = false;
-
 	_controllersVbo.setMode(OF_PRIMITIVE_LINES);
 	_controllersVbo.disableTextures();
+	_bUseCamera = false;
 
 	init();
 }
@@ -124,6 +125,12 @@ void ofxOpenVR::update()
 	}
 
 	updateDevicesMatrixPose();
+	if (_bUseCamera)
+	{
+		updateTrackedCamera();
+
+	}
+
 }
 
 //--------------------------------------------------------------
@@ -147,6 +154,8 @@ void ofxOpenVR::render()
 		// appears to clear that up. Temporary fix while I try to get nvidia to investigate this problem.
 		// 1/29/2014 mikesart
 		glFinish();
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 }
 
@@ -237,10 +246,7 @@ glm::mat4x4 ofxOpenVR::getCurrentViewMatrix(vr::Hmd_Eye nEye)
 	return matV;
 }
 
-//glm::mat4x4 ofxOpenVR::getTrackedDevicePose(vr::ETrackedDeviceClass nDevice)
-//{
-//	return glm::mat4x4();
-//}
+
 
 //--------------------------------------------------------------
 glm::mat4x4 ofxOpenVR::getControllerPose(vr::ETrackedControllerRole nController)
@@ -256,34 +262,7 @@ glm::mat4x4 ofxOpenVR::getControllerPose(vr::ETrackedControllerRole nController)
 
 	return matrix;
 }
-//glm::mat4x4 ofxOpenVR::getTrackedDevicePose(  nDevice)
-//{
-//
-//	vr::InputPoseActionData_t poseData;
-//
-//	const Matrix4 & mat = m_rHand[eHand].m_rmat4Pose;
-//
-//
-//	glm::mat4x4 matrix;
-//	vr::get
-//
-//
-//	if (nDevice == vr::TrackedDeviceClass_HMD) {
-//		matrix = _mat4HMDPose;
-//	}
-//	else if (nDevice == vr::TrackedDeviceClass_GenericTracker) {
-//		matrix = _mat4RightControllerPose;
-//	}
-//	else if (nDevice == vr::TrackedDeviceClass_TrackingReference) {
-//		matrix = _mat4RightControllerPose;
-//	}
-//	else if (nDevice == vr::TrackedDeviceClass_DisplayRedirect) {
-//		matrix = _mat4RightControllerPose;
-//	}
-//	
-//
-//	return matrix;
-//}
+
 
 //--------------------------------------------------------------
 bool ofxOpenVR::isControllerConnected(vr::ETrackedControllerRole nController)
@@ -385,7 +364,7 @@ bool ofxOpenVR::init()
 	{
 		_pHMD = NULL;
 		char buf[1024];
-		snprintf(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+		sprintf_s(buf, sizeof(buf), "Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 		return false;
 	}
 
@@ -397,7 +376,7 @@ bool ofxOpenVR::init()
 		vr::VR_Shutdown();
 
 		char buf[1024];
-		snprintf(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+		sprintf_s(buf, sizeof(buf), "Unable to get render model interface: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
 		return false;
 	}
 	_strTrackingSystemName = "No Driver";
@@ -408,6 +387,25 @@ bool ofxOpenVR::init()
 
 	_fNearClip = 0.1f;
 	_fFarClip = 30.0f;
+
+	// TrackedCamera
+	_pTrackedCamera = (vr::IVRTrackedCamera *)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &eError);
+	if (_pTrackedCamera) {
+		for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice) {
+			bool hascamera;
+			_pTrackedCamera->HasCamera(nDevice, &hascamera);
+			if (hascamera) _trackedCameraIndex = nDevice;
+		}
+		_pTrackedCamera->GetCameraFrameSize(_trackedCameraIndex, vr::VRTrackedCameraFrameType_Undistorted,
+			&_nTrackedCameraFrameWidth, &_nTrackedCameraFrameHeight, &_nTrackedCameraFrameSize);
+		_pTrackedCamera->GetCameraIntrinsics(_trackedCameraIndex, 0,vr::VRTrackedCameraFrameType_Undistorted, &_trackedCameraFocalLength, &_trackedCameraCenter);
+		_pTrackedCamera->GetCameraProjection(_trackedCameraIndex, 0, vr::VRTrackedCameraFrameType_Undistorted, 0.01, 1000, &_trackedCameraProjectionMatrix);
+		_pTrackedCamera->AcquireVideoStreamingService(_trackedCameraIndex, &_trackedCameraHandle);
+		_trackedCameraPix.allocate(_nTrackedCameraFrameWidth, _nTrackedCameraFrameHeight, ofImageType::OF_IMAGE_COLOR_ALPHA);
+	}
+	else {
+		cout << "Failed to access IVRTrackedCamera" << endl;
+	}
 
 	_bIsGLInit = initGL();
 	if (!_bIsGLInit)
@@ -855,9 +853,9 @@ void ofxOpenVR::updateDevicesMatrixPose()
 				}
 			}
 
-
-			if (_pHMD->GetTrackedDeviceClass(nDevice) == vr::TrackedDeviceClass_GenericTracker) {
-				_mat4GenericTrackerrPose = _rmat4DevicePose[nDevice];
+			if(_pHMD->GetTrackedDeviceClass(nDevice) == vr::TrackedDeviceClass_GenericTracker) {
+				_lastGenericTrackerID = nDevice;
+				_mat4LastGenericTrackerPose = _rmat4DevicePose[nDevice];
 			}
 
 		}
@@ -1046,7 +1044,6 @@ void ofxOpenVR::renderStereoTargets()
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-	glClearColor(_clearColor.r, _clearColor.g, _clearColor.b, _clearColor.a);
 	glEnable(GL_MULTISAMPLE);
 
 	// Right Eye
@@ -1074,9 +1071,9 @@ void ofxOpenVR::renderStereoTargets()
 void ofxOpenVR::drawControllers()
 {
 	// Don't draw controllers if somebody else has input focus
-	//if (_pHMD->IsInputFocusCapturedByAnotherProcess()) {
+	if (!_pHMD->IsInputAvailable()) {
 	//	return;
-	//}
+	}
 		
 	_controllersVbo.clear();
 	
@@ -1130,9 +1127,9 @@ void ofxOpenVR::renderScene(vr::Hmd_Eye nEye)
 	
 
 	// Don't continue if somebody else has input focus
-//	if (_pHMD->IsInputFocusCapturedByAnotherProcess()) {
-//		return;
-//	}
+	if (!_pHMD->IsInputAvailable()) {
+		return;
+	}
 
 	// Draw the controllers
 	if (_bDrawControllers) {
@@ -1156,9 +1153,9 @@ void ofxOpenVR::renderScene(vr::Hmd_Eye nEye)
 				continue;
 			}
 				
-			/*if (_pHMD->IsInputFocusCapturedByAnotherProcess() && _pHMD->GetTrackedDeviceClass(unTrackedDevice) == vr::TrackedDeviceClass_Controller) {
+			if (!_pHMD->IsInputAvailable() && _pHMD->GetTrackedDeviceClass(unTrackedDevice) == vr::TrackedDeviceClass_Controller) {
 				continue;
-			}*/
+			}
 				
 			glm::mat4x4 matMVP = getCurrentViewProjectionMatrix(nEye) * _rmat4DevicePose[unTrackedDevice];
 
@@ -1270,6 +1267,10 @@ bool ofxOpenVR::getRenderModelForTrackedDevices()
 	return _bRenderModelForTrackedDevices;
 }
 
+void ofxOpenVR::updateTrackedCamera()
+{
+	_pTrackedCamera->GetVideoStreamFrameBuffer(_trackedCameraHandle, vr::VRTrackedCameraFrameType_Undistorted, _trackedCameraPix.getData(), _nTrackedCameraFrameSize, NULL, 0);
+}
 //-----------------------------------------------------------------------------
 // Purpose: Finds a render model we've already loaded or loads a new one
 //-----------------------------------------------------------------------------
@@ -1277,7 +1278,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 {
 	CGLRenderModel *pRenderModel = NULL;
 	for (std::vector< CGLRenderModel * >::iterator i = _vecRenderModels.begin(); i != _vecRenderModels.end(); i++) {
-		if (!strcmp((*i)->GetName().c_str(), pchRenderModelName)) {
+		if (!stricmp((*i)->GetName().c_str(), pchRenderModelName)) {
 			pRenderModel = *i;
 			break;
 		}
@@ -1292,7 +1293,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			if (error != vr::VRRenderModelError_Loading)
 				break;
 
-			sleep(1);
+			Sleep(1);
 		}
 
 		if (error != vr::VRRenderModelError_None) {
@@ -1306,7 +1307,7 @@ CGLRenderModel *ofxOpenVR::findOrLoadRenderModel(const char *pchRenderModelName)
 			if (error != vr::VRRenderModelError_Loading)
 				break;
 
-			sleep(1);
+			Sleep(1);
 		}
 
 		if (error != vr::VRRenderModelError_None) {

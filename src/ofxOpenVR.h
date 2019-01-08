@@ -62,7 +62,6 @@ public:
 	glm::mat4x4 getCurrentViewProjectionMatrix(vr::Hmd_Eye nEye);
 	glm::mat4x4 getCurrentProjectionMatrix(vr::Hmd_Eye nEye);
 	glm::mat4x4 getCurrentViewMatrix(vr::Hmd_Eye nEye);
-	//glm::mat4x4 getTrackedDevicePose(vr::ETrackedDeviceClass nDevice);
 
 	glm::mat4x4 getControllerPose(vr::ETrackedControllerRole nController);
 	bool isControllerConnected(vr::ETrackedControllerRole nController);
@@ -87,6 +86,7 @@ public:
 	glm::mat4x4 getmat4HMDPose();
 
 	bool connected();
+	bool _bUseCamera;
 
 private:
 
@@ -137,6 +137,15 @@ private:
 	vr::TrackedDevicePose_t _rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	glm::mat4x4 _rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
 
+	vr::IVRTrackedCamera *_pTrackedCamera;
+	vr::TrackedDeviceIndex_t _trackedCameraIndex;
+	vr::TrackedCameraHandle_t _trackedCameraHandle;
+	uint32_t _nTrackedCameraFrameWidth, _nTrackedCameraFrameHeight, _nTrackedCameraFrameSize;
+	ofPixels _trackedCameraPix;
+	vr::HmdVector2_t _trackedCameraFocalLength;
+	vr::HmdVector2_t _trackedCameraCenter;
+	vr::HmdMatrix44_t _trackedCameraProjectionMatrix;
+
 	int _iTrackedControllerCount;
 	int _iTrackedControllerCount_Last;
 	int _iValidPoseCount;
@@ -166,6 +175,9 @@ private:
 	glm::mat4x4 _mat4RightControllerPose;
 	glm::mat4x4 _mat4GenericTrackerrPose;
 
+	int _lastGenericTrackerID;
+	glm::mat4x4 _mat4LastGenericTrackerPose;
+
 	bool _bDrawControllers;
 	ofVboMesh _controllersVbo;
 	ofShader _controllersTransformShader;
@@ -182,6 +194,8 @@ private:
 	void setupCameras();
 
 	void updateDevicesMatrixPose();
+	void updateTrackedCamera();
+
 	void handleInput();
 	void processVREvent(const vr::VREvent_t & event);
 
@@ -189,6 +203,16 @@ private:
 	
 	void drawControllers();
 	void renderScene(vr::Hmd_Eye nEye);
+
+	ofPixels getTrackedCameraPix() { return _trackedCameraPix; };
+	ofVec2f getTrackedCameraFocalLength() { return ofVec2f(_trackedCameraFocalLength.v[0], _trackedCameraFocalLength.v[1]); }
+	ofVec2f getTrackedCameraCenter() { return ofVec2f(_trackedCameraCenter.v[0], _trackedCameraCenter.v[1]); }
+	ofMatrix4x4 getTrackedCameraProjectionMatrix() { return ofMatrix4x4::getTransposedOf(ofMatrix4x4((float*)_trackedCameraProjectionMatrix.m)); }
+
+	ofMatrix4x4 getLastGenericTrackerPose() { return ofMatrix4x4(&_mat4LastGenericTrackerPose[0][0]); }
+	ofMatrix4x4 getHmdPose() { return ofMatrix4x4(&(glm::inverse(_mat4HMDPose))[0][0]); }
+	ofMatrix4x4 getLeftEyePose() { return ofMatrix4x4(&(glm::inverse(_mat4HMDPose)*(glm::inverse(_mat4eyePosLeft)))[0][0]); }
+	ofMatrix4x4 getRightEyePose() { return ofMatrix4x4(&(glm::inverse(_mat4HMDPose)*(glm::inverse(_mat4eyePosRight)))[0][0]); }
 
 	glm::mat4x4 convertSteamVRMatrixToMatrix4(const vr::HmdMatrix34_t &matPose);
 	
