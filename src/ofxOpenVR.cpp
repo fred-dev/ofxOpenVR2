@@ -33,7 +33,7 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 	_pHMD = NULL;
 	_pRenderModels = NULL;
 	_pTrackedCamera = NULL;
-	_bGlFinishHack = true;
+	_bGlFinishHack = false;
 	_unLensVAO = 0;
 	_iTrackedControllerCount = 0;
 	_leftControllerDeviceID = -1;
@@ -44,7 +44,7 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 	_bDrawControllers = false;
 	_bIsGridVisible = false;
 	_clearColor.set(.08f, .08f, .08f, 1.0f);
-	_bRenderModelForTrackedDevices = false;
+	_bRenderModelForTrackedDevices = true;
 	_controllersVbo.setMode(OF_PRIMITIVE_LINES);
 	_controllersVbo.disableTextures();
 	_bUseCamera = false;
@@ -56,7 +56,7 @@ void ofxOpenVR::setup(std::function< void(vr::Hmd_Eye) > f)
 void ofxOpenVR::exit()
 {
 
-       // vr::VRCompositor()->CompositorQuit();
+        //vr::VRCompositor()->CompositorQuit();
     
     
 	if (vr::VRCompositor()->IsMirrorWindowVisible()) {
@@ -269,6 +269,13 @@ glm::mat4x4 ofxOpenVR::getControllerPose(vr::ETrackedControllerRole nController)
 	return matrix;
 }
 
+glm::mat4x4 ofxOpenVR::getTrackerPose()
+{
+	glm::mat4x4 matrix;
+	matrix = _mat4LastGenericTrackerPose;
+	return matrix;
+}
+
 
 //--------------------------------------------------------------
 bool ofxOpenVR::isControllerConnected(vr::ETrackedControllerRole nController)
@@ -401,8 +408,8 @@ bool ofxOpenVR::init()
 	_strTrackingSystemName = getTrackedDeviceString(_pHMD, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
 	_strTrackingSystemModelNumber = getTrackedDeviceString(_pHMD, vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_ModelNumber_String);
 
-	_fNearClip = 0.1f;
-	_fFarClip = 30.0f;
+	_fNearClip = 0.01f;
+	_fFarClip = 1000.0f;
 
 	// TrackedCamera
 	_pTrackedCamera = (vr::IVRTrackedCamera *)vr::VR_GetGenericInterface(vr::IVRTrackedCamera_Version, &eError);
@@ -867,6 +874,10 @@ void ofxOpenVR::updateDevicesMatrixPose()
 					_rightControllerDeviceID = nDevice;
 					_mat4RightControllerPose = _rmat4DevicePose[nDevice];
 				}
+
+				else  {
+					_mat4LastGenericTrackerPose = _rmat4DevicePose[nDevice];
+				}
 			}
 
 			if(_pHMD->GetTrackedDeviceClass(nDevice) == vr::TrackedDeviceClass_GenericTracker) {
@@ -1190,11 +1201,11 @@ void ofxOpenVR::renderScene(vr::Hmd_Eye nEye)
 }
 
 //--------------------------------------------------------------
-void ofxOpenVR::renderDistortion()
+void ofxOpenVR::renderDistortion(int x, int y, float width, float height)
 {
 
 	glDisable(GL_DEPTH_TEST);
-	glViewport(0, 0, ofGetWidth(), ofGetHeight());
+	glViewport(x, y, width, height);
 
 	glBindVertexArray(_unLensVAO);
 	_lensShader.begin();

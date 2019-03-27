@@ -51,7 +51,7 @@ public:
 
 	void update();
 	void render();
-	void renderDistortion();
+	void renderDistortion(int x, int y, float width, float height);
 
 	void drawDebugInfo(float x = 10.0f, float y = 20.0f);
 
@@ -64,6 +64,7 @@ public:
 	glm::mat4x4 getCurrentViewMatrix(vr::Hmd_Eye nEye);
 
 	glm::mat4x4 getControllerPose(vr::ETrackedControllerRole nController);
+	glm::mat4x4 getTrackerPose();
 	bool isControllerConnected(vr::ETrackedControllerRole nController);
 
 	void setDrawControllers(bool bDrawControllers);
